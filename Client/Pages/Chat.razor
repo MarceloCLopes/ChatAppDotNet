@@ -3,3 +3,34 @@
 <PageTitle>Chat</PageTitle>
 
 <h1>Chat</h1>
+
+
+@code {
+    [Parameter]
+    public string Name { get; set; } = string.Empty;
+    [Parameter]
+    public string Room { get; set; } = string.Empty;
+
+    private HubConnection? hubConnection;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        hubConnection = new HubConnectionBuilder()
+            .WithUrl("http://localhost:5204/chatHub")
+            .Build();
+
+        hubConnection.On<string>("ReceiveMessage", (message) =>
+        {
+            Console.WriteLine($"[CLIENT] {message}");
+        });
+
+        var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
+        var queryParams = QueryHelpers.ParseQuery(uri.Query);
+
+        Name = queryParams.TryGetValue("name", out var nameValue) ? nameValue.ToString() : string.Empty;
+        Room = queryParams.TryGetValue("room", out var roomValue) ? roomValue.ToString() : string.Empty;
+
+        await hubConnection.StartAsync();
+        await hubConnection.InvokeAsync("JoinRoom", Name, Room);
+    }
+}
